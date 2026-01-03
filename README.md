@@ -43,7 +43,7 @@ CAN トランシーバの CAN-H と CAN-L を RobStride モーターの CAN バ�
 ```ini
 lib_deps =
     handmade0octopus/ESP32-TWAI-CAN@^1.0.1
-    https://github.com/necobit/RobStride_Library.git
+    https://github.com/necobit/RobStride_ESP32_Library.git
 ```
 
 ### Arduino IDE
@@ -221,8 +221,8 @@ if (status.valid) {
 モーターが定期的に自動でステータスを送信するようにできます:
 
 ```cpp
-// 自動報告を有効化（デフォルト: 10ms間隔）
-motor.enable_auto_report(100);  // 100ms間隔で自動報告
+// 自動報告を有効化
+motor.enable_auto_report();
 
 // setup()で一度だけ有効化すれば、モーターが定期的にステータスを送信
 // read_status(0)で非ブロッキングで読み取り可能
