@@ -169,7 +169,9 @@ RobStrideStatus RobStrideMotor::read_status(uint32_t timeout_ms)
     CanFrame frame;
     uint32_t start_time = millis();
 
-    while ((millis() - start_time) < timeout_ms)
+    // Keep checking until timeout or match found
+    // In non-blocking mode (timeout_ms==0), check all frames in buffer
+    while (true)
     {
         if (ESP32Can.readFrame(&frame, 0))
         {
@@ -184,8 +186,8 @@ RobStrideStatus RobStrideMotor::read_status(uint32_t timeout_ms)
             if (comm_type != 0x02)
                 continue;
 
-            // Extract motor ID (bit7~0)
-            uint8_t rx_motor_id = frame.identifier & 0xFF;
+            // Extract motor ID (bit15~8)
+            uint8_t rx_motor_id = (frame.identifier >> 8) & 0xFF;
             if (rx_motor_id != motor_id)
                 continue;
 
@@ -208,7 +210,71 @@ RobStrideStatus RobStrideMotor::read_status(uint32_t timeout_ms)
             status.valid = true;
             return status;
         }
+        else
+        {
+            // No frame available in buffer
+            if (timeout_ms == 0) {
+                // Non-blocking mode: buffer is empty, exit
+                break;
+            }
+
+            // Blocking mode: check if timeout reached
+            if ((millis() - start_time) >= timeout_ms) {
+                break;
+            }
+
+            // Wait a bit before retrying
+            delay(1);
+        }
     }
 
     return status;
+}
+
+void RobStrideMotor::enable_auto_report(uint16_t interval_ms)
+{
+    CanFrame frame;
+    frame.identifier = ((uint32_t)0x18 << 24) | ((uint32_t)master_id << 8) | motor_id;
+    frame.extd = true;
+    frame.data_length_code = 8;
+
+    // Fixed bytes (protocol requirement)
+    frame.data[0] = 0x01;
+    frame.data[1] = 0x02;
+    frame.data[2] = 0x03;
+    frame.data[3] = 0x04;
+    frame.data[4] = 0x05;
+    frame.data[5] = 0x06;
+
+    // Enable auto report (Byte6: 0x01=ON)
+    frame.data[6] = 0x01;
+
+    // Reserved/unused
+    frame.data[7] = 0x00;
+
+    ESP32Can.writeFrame(&frame);
+}
+
+void RobStrideMotor::disable_auto_report()
+{
+    CanFrame frame;
+    frame.identifier = ((uint32_t)0x18 << 24) | ((uint32_t)master_id << 8) | motor_id;
+    frame.extd = true;
+    frame.data_length_code = 8;
+
+    // Fixed bytes (protocol requirement)
+    frame.data[0] = 0x01;
+    frame.data[1] = 0x02;
+    frame.data[2] = 0x03;
+    frame.data[3] = 0x04;
+    frame.data[4] = 0x05;
+    frame.data[5] = 0x06;
+
+    // Disable auto report (Byte6: 0x00=OFF)
+    frame.data[6] = 0x00;
+
+    // Reserved/unused
+    frame.data[7] = 0x00;
+
+    ESP32Can.writeFrame(&frame);
 }

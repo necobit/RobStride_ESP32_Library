@@ -196,6 +196,56 @@ motor.set_limit_accel_rad(accel);      // 速度モード用加速度リミッ�
 motor.set_pp_limits(velocity, accel);  // PP位置モード用リミット
 ```
 
+### ステータス読み出し
+
+モーターのステータス（位置、速度、トルク、温度など）を読み取ります:
+
+```cpp
+// 手動でステータスを読み取る（タイムアウト指定可能）
+RobStrideStatus status = motor.read_status(timeout_ms);
+
+if (status.valid) {
+  // status.position (rad)
+  // status.velocity (rad/s)
+  // status.torque (Nm)
+  // status.temperature (°C)
+  // status.mode (0=Reset, 1=Cali, 2=Motor)
+  // status.fault (0=正常)
+}
+```
+
+**注**: `read_status()`は制御コマンド送信後にモーターから自動的に送られるフィードバックフレーム（通信タイプ2）を読み取ります。
+
+### 自動報告モード
+
+モーターが定期的に自動でステータスを送信するようにできます:
+
+```cpp
+// 自動報告を有効化（デフォルト: 10ms間隔）
+motor.enable_auto_report(100);  // 100ms間隔で自動報告
+
+// setup()で一度だけ有効化すれば、モーターが定期的にステータスを送信
+// read_status(0)で非ブロッキングで読み取り可能
+
+void loop() {
+  // 制御コマンド送信
+  motor.send_motion_command(pos, vel, kp, kd, torque);
+
+  // ステータスを読み取る（すぐに返る）
+  RobStrideStatus status = motor.read_status(0);
+  if (status.valid) {
+    Serial.printf("Pos: %.3f\n", status.position);
+  }
+
+  delay(10);
+}
+
+// 自動報告を無効化
+motor.disable_auto_report();
+```
+
+**推奨**: 自動報告モードを使用することで、ブロッキングなしでリアルタイムにモーターステータスを監視できます。
+
 ### パラメータ範囲
 
 | パラメータ | 最小値 | 最大値 | 単位  |
