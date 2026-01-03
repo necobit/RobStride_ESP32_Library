@@ -1,42 +1,44 @@
-# RobStride Motor Control Library for ESP32
+# RobStride モーター制御ライブラリ（ESP32 用）
 
-Arduino library for controlling RobStride EDULITE05 motors via CAN bus on ESP32 platforms.
+ESP32 プラットフォームで CAN バスを介して RobStride EDULITE05 モーターを制御する Arduino ライブラリです。
 
-## Features
+> **注意**: 現在このライブラリは製作中です。EDULITE05 用のパラメータのみ対応しています。他の RobStride モーターを使用する場合は、パラメータ範囲（位置、速度、トルク等）の調整が必要です。
 
-- Support for all RobStride motor control modes:
-  - **MIT Motion Control**: Direct position/velocity control with adjustable stiffness (Kp) and damping (Kd)
-  - **Position Control (PP)**: Point-to-point position mode with velocity/acceleration limits
-  - **Position Control (CSP)**: Continuous position streaming mode
-  - **Speed Control**: Velocity control with current limiting
-  - **Current/Torque Control**: Direct current/torque command
-- Clean API with atomic operations (no internal delays)
-- Proper mode switching with safety procedures
-- Built on ESP32-TWAI-CAN library
+## 機能
 
-## Hardware Requirements
+- RobStride モーターの全制御モードに対応:
+  - **MIT モーションコントロール**: 位置/速度の直接制御（Kp/Kd によるインピーダンス制御）
+  - **位置制御（PP）**: ポイント・ツー・ポイント位置決めモード
+  - **位置制御（CSP）**: 連続位置ストリーミングモード
+  - **速度制御**: 電流制限付き速度制御
+  - **電流/トルク制御**: 直接電流指令
+- 遅延なしのアトミック操作による高速な API 設計
+- 安全なモード切替手順
+- ESP32-TWAI-CAN ライブラリをベースに構築
 
-- ESP32-S3 or ESP32 board (tested on M5Stack AtomS3)
-- RobStride EDULITE05 motor
-- CAN transceiver (SN65HVD230 or compatible)
+## 必要なハードウェア
 
-## Wiring
+- ESP32-S3 または ESP32 ボード（M5Stack AtomS3 で動作確認済み）
+- RobStride EDULITE05 モーター
+- CAN トランシーバ（M5Stack Unit Mini CAN で動作確認済み）
+
+## 配線
 
 ```
-ESP32        CAN Transceiver
+ESP32        CANトランシーバ
 GPIO1   -->  CRX (RX)
 GPIO2   -->  CTX (TX)
 3.3V    -->  VCC
 GND     -->  GND
 ```
 
-Connect CAN transceiver to RobStride motor CAN bus (CAN-H and CAN-L).
+CAN トランシーバの CAN-H と CAN-L を RobStride モーターの CAN バスに接続してください。
 
-## Installation
+## インストール
 
 ### PlatformIO
 
-Add to your `platformio.ini`:
+`platformio.ini`に以下を追加:
 
 ```ini
 lib_deps =
@@ -46,34 +48,34 @@ lib_deps =
 
 ### Arduino IDE
 
-1. Download this library as ZIP
-2. In Arduino IDE: Sketch → Include Library → Add .ZIP Library
-3. Install ESP32-TWAI-CAN library from Library Manager
+1. このライブラリを ZIP でダウンロード
+2. Arduino IDE: スケッチ → ライブラリをインクルード → .ZIP 形式のライブラリをインストール
+3. ライブラリマネージャから ESP32-TWAI-CAN ライブラリをインストール
 
-## Quick Start
+## クイックスタート
 
 ```cpp
 #include <Arduino.h>
 #include <ESP32-TWAI-CAN.hpp>
 #include <RobStride.h>
 
-RobStrideMotor motor(1);  // Motor ID = 1
+RobStrideMotor motor(1);  // モーターID = 1
 
 void setup() {
   Serial.begin(115200);
 
-  // Initialize CAN bus: 1Mbps, TX=GPIO2, RX=GPIO1
+  // CANバス初期化: 1Mbps, TX=GPIO2, RX=GPIO1
   ESP32Can.begin(TWAI_SPEED_1000KBPS, 2, 1);
 
   delay(100);
 
-  // Initialize motor
+  // モーター初期化
   motor.stop();
   delay(50);
   motor.clear_fault();
   delay(50);
 
-  // Set motion control mode
+  // モーションコントロールモードに設定
   motor.set_run_mode(RS_MODE_MOTION);
   delay(20);
 
@@ -81,42 +83,42 @@ void setup() {
 }
 
 void loop() {
-  // MIT motion control: position, velocity, Kp, Kd, torque
+  // MIT モーションコントロール: 位置, 速度, Kp, Kd, トルク
   motor.send_motion_command(1.0, 0, 10.0, 0.5, 0);
   delay(10);
 }
 ```
 
-## Control Modes
+## 制御モード
 
-### MIT Motion Control (RS_MODE_MOTION)
+### MIT モーションコントロール（RS_MODE_MOTION）
 
-Direct control with position, velocity, and impedance parameters:
+位置、速度、インピーダンスパラメータによる直接制御:
 
 ```cpp
 motor.set_run_mode(RS_MODE_MOTION);
 delay(20);
 motor.enable();
 
-// position, velocity, Kp, Kd, feedforward_torque
+// 位置, 速度, Kp, Kd, フィードフォワードトルク
 motor.send_motion_command(1.5, 0, 10.0, 0.5, 0);
 ```
 
-### Position Control - Point to Point (RS_MODE_POS_PP)
+### 位置制御 - ポイント・ツー・ポイント（RS_MODE_POS_PP）
 
 ```cpp
 motor.set_limit_current(3.0);
 delay(10);
-motor.set_pp_limits(5.0, 5.0);  // velocity, acceleration
+motor.set_pp_limits(5.0, 5.0);  // 速度, 加速度
 delay(10);
 motor.set_run_mode(RS_MODE_POS_PP);
 delay(20);
 motor.enable();
 
-motor.set_position_reference(2.0);  // Target position in radians
+motor.set_position_reference(2.0);  // 目標位置（ラジアン）
 ```
 
-### Position Control - Continuous (RS_MODE_POS_CSP)
+### 位置制御 - 連続（RS_MODE_POS_CSP）
 
 ```cpp
 motor.set_limit_speed(5.0);
@@ -127,10 +129,10 @@ motor.set_run_mode(RS_MODE_POS_CSP);
 delay(20);
 motor.enable();
 
-motor.set_position_reference(1.0);  // Update position continuously
+motor.set_position_reference(1.0);  // 位置を連続更新
 ```
 
-### Speed Control (RS_MODE_SPEED)
+### 速度制御（RS_MODE_SPEED）
 
 ```cpp
 motor.set_limit_current(3.0);
@@ -144,77 +146,77 @@ motor.enable();
 motor.set_speed_reference(5.0);  // rad/s
 ```
 
-### Current/Torque Control (RS_MODE_CURRENT)
+### 電流/トルク制御（RS_MODE_CURRENT）
 
 ```cpp
 motor.set_run_mode(RS_MODE_CURRENT);
 delay(20);
 motor.enable();
 
-motor.set_current_reference(0.5);  // Amperes
+motor.set_current_reference(0.5);  // アンペア
 ```
 
-## API Reference
+## API リファレンス
 
-### Basic Commands
+### 基本コマンド
 
 ```cpp
-motor.enable();              // Enable motor
-motor.stop();                // Stop motor (disable)
-motor.clear_fault();         // Clear fault status
-motor.set_zero_position();   // Set current position as zero
+motor.enable();              // モーター有効化
+motor.stop();                // モーター停止（無効化）
+motor.clear_fault();         // フォルトステータスをクリア
+motor.set_zero_position();   // 現在位置をゼロに設定
 ```
 
-### Mode Configuration
+### モード設定
 
 ```cpp
-motor.set_run_mode(mode);    // Set control mode
-// Modes: RS_MODE_MOTION, RS_MODE_POS_PP, RS_MODE_POS_CSP,
+motor.set_run_mode(mode);    // 制御モードを設定
+// モード: RS_MODE_MOTION, RS_MODE_POS_PP, RS_MODE_POS_CSP,
 //        RS_MODE_SPEED, RS_MODE_CURRENT
 ```
 
-### Control Commands
+### 制御コマンド
 
 ```cpp
-// MIT Motion Control
+// MITモーションコントロール
 motor.send_motion_command(position, velocity, kp, kd, torque);
 
-// Position/Speed/Current Reference
+// 位置/速度/電流指令値
 motor.set_position_reference(position);
 motor.set_speed_reference(speed);
 motor.set_current_reference(current);
 ```
 
-### Limits Configuration
+### リミット設定
 
 ```cpp
-motor.set_limit_current(current);      // Set current limit (A)
-motor.set_limit_speed(speed);          // Set speed limit (rad/s)
-motor.set_limit_accel_rad(accel);      // Set acceleration limit for speed mode
-motor.set_pp_limits(velocity, accel);  // Set limits for PP position mode
+motor.set_limit_current(current);      // 電流リミット設定 (A)
+motor.set_limit_speed(speed);          // 速度リミット設定 (rad/s)
+motor.set_limit_accel_rad(accel);      // 速度モード用加速度リミット
+motor.set_pp_limits(velocity, accel);  // PP位置モード用リミット
 ```
 
-### Parameter Ranges
+### パラメータ範囲
 
-| Parameter | Min | Max | Unit |
-|-----------|-----|-----|------|
-| Position | -12.57 | 12.57 | rad |
-| Velocity | -50.0 | 50.0 | rad/s |
-| Kp | 0.0 | 500.0 | - |
-| Kd | 0.0 | 5.0 | - |
-| Torque | -6.0 | 6.0 | Nm |
+| パラメータ | 最小値 | 最大値 | 単位  |
+| ---------- | ------ | ------ | ----- |
+| 位置       | -12.57 | 12.57  | rad   |
+| 速度       | -50.0  | 50.0   | rad/s |
+| Kp         | 0.0    | 500.0  | -     |
+| Kd         | 0.0    | 5.0    | -     |
+| トルク     | -6.0   | 6.0    | Nm    |
 
-## Important Notes
+## 重要な注意事項
 
-### Safe Mode Switching
+### 安全なモード切替
 
-Always follow this sequence when switching control modes:
+制御モードを切り替える際は、必ず以下の手順に従ってください:
 
-1. Stop motor
-2. Clear faults (recommended twice)
-3. Set parameter limits BEFORE setting new mode
-4. Set run mode
-5. Enable motor
+1. モーターを停止
+2. フォルトをクリア（2 回推奨）
+3. 新しいモードを設定する**前に**パラメータリミットを設定
+4. 実行モードを設定
+5. モーターを有効化
 
 ```cpp
 void switch_mode_safely(uint8_t new_mode) {
@@ -225,7 +227,7 @@ void switch_mode_safely(uint8_t new_mode) {
   motor.clear_fault();
   delay(50);
 
-  // Set limits based on mode
+  // モードに応じたリミット設定
   if (new_mode == RS_MODE_SPEED) {
     motor.set_limit_current(3.0);
     delay(10);
@@ -239,27 +241,27 @@ void switch_mode_safely(uint8_t new_mode) {
 }
 ```
 
-### Timing Requirements
+### タイミング要件
 
-- 10ms delay between parameter writes
-- 20ms delay after mode changes before enabling
-- 50ms delay after stop/fault clear operations
+- パラメータ書き込み間: 10ms
+- モード変更後、有効化前: 20ms
+- 停止/フォルトクリア操作後: 50ms
 
-### Library Design
+### ライブラリ設計
 
-All library methods are **atomic** (no internal delays). Application code is responsible for proper timing between commands.
+すべてのライブラリメソッドは**アトミック**（内部遅延なし）です。コマンド間の適切なタイミングはアプリケーションコード側で管理してください。
 
-## Examples
+## サンプル
 
-See the `examples/` folder for complete examples:
+`examples/`フォルダに完全なサンプルがあります:
 
-- **BasicControl**: Simple position control example
-- **DemoLoop**: Comprehensive demo cycling through all control modes
+- **BasicControl**: シンプルな位置制御の例
+- **DemoLoop**: 全制御モードを順番に実行する包括的なデモ
 
-## License
+## ライセンス
 
 MIT License
 
-## Credits
+## クレジット
 
-Developed for RobStride EDULITE05 motors using the ESP32-TWAI-CAN library.
+ESP32-TWAI-CAN ライブラリを使用して RobStride EDULITE05 モーター向けに開発されました。
