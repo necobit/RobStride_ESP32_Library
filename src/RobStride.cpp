@@ -13,6 +13,12 @@ int RobStrideMotor::float_to_uint(float x, float x_min, float x_max, int bits)
     return (int)((x - offset) * ((float)((1 << bits) - 1)) / span);
 }
 
+float RobStrideMotor::uint_to_float(int x_int, float x_min, float x_max, int bits)
+{
+    float span = x_max - x_min;
+    return ((float)x_int) * span / ((float)((1 << bits) - 1)) + x_min;
+}
+
 void RobStrideMotor::enable()
 {
     CanFrame frame;
@@ -153,4 +159,56 @@ void RobStrideMotor::set_pp_limits(float velocity, float accel)
 {
     write_parameter(RS_IDX_VEL_MAX, velocity);
     write_parameter(RS_IDX_ACC_SET, accel);
+}
+
+RobStrideStatus RobStrideMotor::read_status(uint32_t timeout_ms)
+{
+    RobStrideStatus status = {0};
+    status.valid = false;
+
+    CanFrame frame;
+    uint32_t start_time = millis();
+
+    while ((millis() - start_time) < timeout_ms)
+    {
+        if (ESP32Can.readFrame(&frame, 0))
+        {
+            // Check if this is an extended frame
+            if (!frame.extd)
+                continue;
+
+            // Extract communication type (bit28~24)
+            uint8_t comm_type = (frame.identifier >> 24) & 0x1F;
+
+            // Check for feedback frame (type 2)
+            if (comm_type != 0x02)
+                continue;
+
+            // Extract motor ID (bit7~0)
+            uint8_t rx_motor_id = frame.identifier & 0xFF;
+            if (rx_motor_id != motor_id)
+                continue;
+
+            // Extract mode (bit23~22) and fault (bit21~16)
+            status.mode = (frame.identifier >> 22) & 0x03;
+            status.fault = (frame.identifier >> 16) & 0x3F;
+
+            // Parse data bytes (high byte first)
+            uint16_t pos_int = ((uint16_t)frame.data[0] << 8) | frame.data[1];
+            uint16_t vel_int = ((uint16_t)frame.data[2] << 8) | frame.data[3];
+            uint16_t torque_int = ((uint16_t)frame.data[4] << 8) | frame.data[5];
+            uint16_t temp_int = ((uint16_t)frame.data[6] << 8) | frame.data[7];
+
+            // Convert to float values
+            status.position = uint_to_float(pos_int, RS_P_MIN, RS_P_MAX, 16);
+            status.velocity = uint_to_float(vel_int, RS_V_MIN, RS_V_MAX, 16);
+            status.torque = uint_to_float(torque_int, RS_T_MIN, RS_T_MAX, 16);
+            status.temperature = (float)temp_int / 10.0f;
+
+            status.valid = true;
+            return status;
+        }
+    }
+
+    return status;
 }

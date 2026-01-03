@@ -37,14 +37,27 @@
 #define RS_MODE_CURRENT 3
 #define RS_MODE_POS_CSP 5
 
+// Motor Status (from feedback frame - Communication Type 2)
+struct RobStrideStatus
+{
+    float position;      // Current position (rad)
+    float velocity;      // Current velocity (rad/s)
+    float torque;        // Current torque (Nm)
+    float temperature;   // Temperature (Celsius)
+    uint8_t mode;        // Motor mode: 0=Reset, 1=Cali, 2=Motor
+    uint8_t fault;       // Fault code (0 = no fault)
+    bool valid;          // true if status was successfully read
+};
+
 class RobStrideMotor
 {
 private:
     uint8_t motor_id;
     uint8_t master_id;
 
-    // Helper function to convert float to unsigned int
+    // Helper functions for value conversion
     int float_to_uint(float x, float x_min, float x_max, int bits);
+    float uint_to_float(int x_int, float x_min, float x_max, int bits);
 
 public:
     RobStrideMotor(uint8_t id, uint8_t master = 0xFD);
@@ -73,6 +86,9 @@ public:
     void set_limit_speed(float speed);
     void set_limit_accel_rad(float accel); // For Speed Mode
     void set_pp_limits(float velocity, float accel); // For PP Mode
+
+    // Status Reading (Communication Type 2 feedback frame)
+    RobStrideStatus read_status(uint32_t timeout_ms = 10);
 };
 
 #endif // ROBSTRIDE_H
