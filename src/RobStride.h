@@ -89,6 +89,12 @@ public:
 
     // Status Reading (Communication Type 2 feedback frame)
     RobStrideStatus read_status(uint32_t timeout_ms = 10);
+
+    // Auto Report Mode (Communication Type 24)
+    // Enables automatic status reporting at specified interval
+    // Motor will continuously send feedback frames at the given interval
+    void enable_auto_report(uint16_t interval_ms = 10);
+    void disable_auto_report();
 };
 
 #endif // ROBSTRIDE_H

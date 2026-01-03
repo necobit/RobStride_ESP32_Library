@@ -1,6 +1,6 @@
 {
   "name": "RobStride",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Arduino library for controlling RobStride EDULITE05 motors via CAN bus on ESP32 platforms",
   "keywords": [
     "motor",
